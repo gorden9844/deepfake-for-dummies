@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Обнаружение Deepfakes | Гибридные нейросети</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #7c3aed;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --card-bg: #ffffff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            background: var(--light);
+        }
+
+        /* Navigation */
+        nav {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            padding: 1rem 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo { color: white; font-size: 1.4rem; font-weight: 700; text-decoration: none; }
+        .nav-links { display: flex; gap: 1.5rem; list-style: none; flex-wrap: wrap; }
+        .nav-links a { color: white; text-decoration: none; font-size: 0.95rem; transition: opacity 0.3s; }
+        .nav-links a:hover { opacity: 0.8; text-decoration: underline; }
+
+        /* Hero */
+        .hero {
+            margin-top: 60px;
+            background: linear-gradient(135deg, var(--dark), #1e293b);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+        .hero h1 { font-size: 2.5rem; margin-bottom: 1rem; background: linear-gradient(90deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-subtitle { font-size: 1.2rem; opacity: 0.9; margin-bottom: 1.5rem; }
+        .author-info { background: rgba(255,255,255,0.1); padding: 1.2rem; border-radius: 10px; display: inline-block; margin-top: 1rem; backdrop-filter: blur(5px); }
+
+        /* Container & Sections */
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        section { background: var(--card-bg); margin: 2rem 0; padding: 2.5rem; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        h2 { color: var(--primary); font-size: 2rem; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 3px solid var(--primary); }
+        h3 { color: var(--secondary); font-size: 1.5rem; margin: 2rem 0 1rem; }
+        h4 { color: var(--dark); font-size: 1.2rem; margin: 1.5rem 0 0.5rem; }
+        p { margin-bottom: 1rem; }
+
+        /* Components */
+        .concept-box { background: linear-gradient(135deg, #dbeafe, #ede9fe); border-left: 5px solid var(--primary); padding: 1.5rem; margin: 1.5rem 0; border-radius: 0 10px 10px 0; }
+        .concept-box h4 { margin-top: 0; color: var(--primary); }
+
+        .table-container { overflow-x: auto; margin: 1.5rem 0; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        thead { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; }
+        th, td { padding: 0.9rem 1rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        tbody tr:hover { background: #f1f5f9; }
+        .positive { color: var(--success); font-weight: 600; }
+        .negative { color: var(--danger); font-weight: 600; }
+
+        .chart-container { position: relative; height: 400px; margin: 2rem 0; padding: 1rem; background: #f8fafc; border-radius: 12px; }
+
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin: 1.5rem 0; }
+        .info-card { background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; transition: all 0.3s; }
+        .info-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+        .info-card h4 { color: var(--primary); margin-top: 0; }
+        .info-card.growth { border-left: 5px solid var(--success); }
+        .info-card.decline { border-left: 5px solid var(--danger); }
+        .info-card.warning { border-left: 5px solid var(--warning); }
+
+        .qa-item { background: #f8fafc; border-radius: 10px; margin: 1rem 0; overflow: hidden; border: 1px solid #e2e8f0; }
+        .qa-question { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 1.2rem; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+        .qa-question:hover { opacity: 0.95; }
+        .qa-answer { padding: 1.5rem; display: none; }
+        .qa-answer.active { display: block; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .summary-box { background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid var(--warning); border-radius: 12px; padding: 2rem; margin: 2rem 0; }
+        .summary-list { list-style: none; counter-reset: summary-counter; }
+        .summary-list li { counter-increment: summary-counter; padding: 1rem; margin: 0.5rem 0; padding-left: 3.5rem; position: relative; background: white; border-radius: 8px; }
+        .summary-list li:before { content: counter(summary-counter); position: absolute; left: 1.2rem; top: 50%; transform: translateY(-50%); background: var(--warning); color: white; width: 2rem; height: 2rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 1.5rem 0; }
+        .stat-card { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 1.8rem; border-radius: 12px; text-align: center; }
+        .stat-number { font-size: 2.5rem; font-weight: bold; display: block; margin-bottom: 0.5rem; }
+        .stat-label { font-size: 0.9rem; opacity: 0.9; }
+
+        dl { margin: 1rem 0; }
+        dt { font-weight: bold; color: var(--primary); margin-top: 1.2rem; }
+        dd { margin-left: 1rem; padding: 0.5rem; background: #f8fafc; border-radius: 6px; }
+
+        .highlight { background: linear-gradient(120deg, #fef08a 0%, #fef08a 100%); padding: 0.2rem 0.4rem; border-radius: 4px; font-weight: 600; }
+
+        footer { background: var(--dark); color: white; text-align: center; padding: 2rem; margin-top: 3rem; }
+        .github-instructions { background: #1e293b; color: #cbd5e1; padding: 2rem; border-radius: 12px; margin-top: 2rem; }
+        .github-instructions code { background: #334155; padding: 0.2rem 0.4rem; border-radius: 4px; font-family: monospace; }
+        .step { margin-bottom: 1rem; padding-left: 1rem; border-left: 3px solid var(--primary); }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .hero h1 { font-size: 1.8rem; }
+            section { padding: 1.5rem; }
+            .cards-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="nav-container">
+            <a href="#" class="logo">🛡️ Deepfake Detection</a>
+            <ul class="nav-links">
+                <li><a href="#intro">Введение</a></li>
+                <li><a href="#evolution">Эволюция методов</a></li>
+                <li><a href="#architecture">Архитектура</a></li>
+                <li><a href="#results">Результаты</a></li>
+                <li><a href="#qa">Вопросы</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="hero">
+        <h1>Обнаружение глубоких подделок (deepfakes) с помощью гибридных нейросетей</h1>
+        <p class="hero-subtitle">Научно-образовательный портал: теория, архитектура, эксперименты</p>
+        <div class="author-info">
+            <p><strong>Автор:</strong> Горлов Денис Константинович | ТОГУ, Хабаровск</p>
+            <p><strong>Научный руководитель:</strong> Порт М.С., к.т.н., доцент</p>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <section id="intro">
+            <h2>📚 Введение: Проблема и контекст</h2>
+            <div class="concept-box">
+                <h4>Что такое Deepfake?</h4>
+                <p><strong>Deepfake</strong> (от англ. <em>deep learning</em> + <em>fake</em>) — мультимедийный контент (видео, аудио, изображения), сгенерированный или модифицированный с использованием нейросетей, в котором один человек заменяется другим с высокой визуальной/акустической достоверностью.</p>
+            </div>
+            <p>Стремительное развитие генеративных моделей (GAN, диффузионные модели, автокодировщики) привело к тому, что синтетический контент достиг уровня, неразличимого для человеческого глаза. Это создаёт критические угрозы информационной безопасности: дезинформация, мошенничество с голосом/видео, нарушение приватности, фальсификация цифровых улик.</p>
+            <p>Традиционные детекторы на базе <span class="highlight">свёрточных нейронных сетей (CNN)</span> показывают высокую точность на известных данных, но быстро теряют эффективность при:</p>
+            <ul>
+                <li>Постобработке видео (сжатие H.264/H.265, добавление шума, кадрирование)</li>
+                <li>Смене генеративного алгоритма (например, переход от GAN к диффузионным моделям)</li>
+                <li>Кросс-датасетном тестировании (обучение на одном наборе, тест на другом)</li>
+            </ul>
+            <div class="summary-box">
+                <h3>🎯 Цель исследования</h3>
+                <p>Систематизация современных подходов к построению <strong>гибридных нейросетевых детекторов</strong>, экспериментальная оценка их эффективности на стандартных бенчмарках и выявление барьеров для промышленного внедрения.</p>
+            </div>
+        </section>
+
+        <section id="evolution">
+            <h2>🔄 Эволюция методов детекции</h2>
+            <p>Развитие методов обнаружения прошло несколько этапов, каждый из которых реагировал на ограничения предыдущего:</p>
+            
+            <div class="cards-grid">
+                <div class="info-card">
+                    <h4>1️⃣ Ручные признаки (до 2018)</h4>
+                    <p>Анализ асимметрии лица, артефактов сжатия, несоответствий освещения. <br><span class="negative">Проблема:</span> легко обходятся современными генераторами.</p>
+                </div>
+                <div class="info-card">
+                    <h4>2️⃣ Чистые CNN (2018-2021)</h4>
+                    <p>Xception, EfficientNet, ResNet. Классификация «реальное/фейк» по текстурам. <br><span class="negative">Проблема:</span> переобучение на артефакты сжатия, плохая обобщаемость.</p>
+                </div>
+                <div class="info-card">
+                    <h4>3️⃣ Частотный анализ (2020-2022)</h4>
+                    <p>Преобразование Фурье, вейвлеты, DCT. Выявление спектральных аномалий декодеров. <br><span class="negative">Проблема:</span> чувствительность к компрессии, сложность для видео.</p>
+                </div>
+                <div class="info-card">
+                    <h4>4️⃣ Трансформеры (2021-н.в.)</h4>
+                    <p>ViT, Swin. Глобальный контекст и долгосрочные зависимости. <br><span class="negative">Проблема:</span> высокие вычислительные затраты, требование больших выборок.</p>
+                </div>
+            </div>
+
+            <div class="concept-box">
+                <h4>💡 Почему гибрид?</h4>
+                <p>CNN отлично извлекают <strong>локальные признаки</strong> (границы, текстуры кожи, микроскопические границы наложения). Трансформеры и частотные модули улавливают <strong>глобальные несоответствия</strong> (освещение, перспектива, фазовые сдвиги). Их комбинация даёт синергетический эффект, повышая устойчивость к постобработке и новым генераторам.</p>
+            </div>
+        </section>
+
+        <section id="architecture">
+            <h2>🏗️ Архитектура гибридного детектора</h2>
+            <p>Модель строится по конвейерному принципу. Каждый этап решает конкретную подзадачу:</p>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>Этап</th><th>Технология</th><th>Функция</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Предобработка</td><td>Landmark Detection (68/106 точек), нормализация, выравнивание</td><td>Выделение ROI (область лица), устранение артефактов кадрирования</td></tr>
+                        <tr><td>Локальный экстрактор</td><td>Легковесные CNN (MobileNetV3, EfficientNet-B0)</td><td>Извлечение текстур, границ, артефактов генерации в высокочастотной области</td></tr>
+                        <tr><td>Глобальный контекст</td><td>Vision Transformer, Self-Attention</td><td>Анализ взаимосвязей между отдалёнными участками (лицо vs фон, глаза vs рот)</td></tr>
+                        <tr><td>Мультиспектральный модуль</td><td>DCT / Fourier + Cross-Attention</td><td>Согласование пространственных и частотных признаков, выявление артефактов декодера</td></tr>
+                        <tr><td>Классификатор</td><td>Полносвязная сеть + Sigmoid</td><td>Выдача вероятности принадлежности к классу <em>Synthetic</em></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="summary-box">
+                <h3>⚙️ Ключевые архитектурные решения</h3>
+                <ul class="summary-list">
+                    <li>Иерархическое внимание (окна 7×7 и 15×15) снижает сложность трансформера с квадратичной до линейно-логарифмической</li>
+                    <li>Кросс-внимание (cross-attention) на этапе слияния RGB и частотного представлений предотвращает потерю мелких артефактов</li>
+                    <li>Квантование INT8 сокращает задержку инференса на ~36% при потере точности <0.8%</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="results">
+            <h2>📊 Экспериментальные результаты</h2>
+            <p>Обучение и тестирование проводились на трёх общедоступных бенчмарках. Выборка: ~10 000 реальных и ~10 000 синтетических видео. Разделение: 70/20/10.</p>
+
+            <div class="stats-grid">
+                <div class="stat-card"><span class="stat-number">95.8%</span><span class="stat-label">Accuracy на FF++</span></div>
+                <div class="stat-card"><span class="stat-number">93.1%</span><span class="stat-label">Accuracy на Celeb-DF</span></div>
+                <div class="stat-card"><span class="stat-number">0.981</span><span class="stat-label">AUC-ROC (FF++)</span></div>
+                <div class="stat-card"><span class="stat-number">18.3 мс</span><span class="stat-label">Время на кадр (RTX 4060)</span></div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="accuracyChart"></canvas>
+            </div>
+
+            <h3>Кросс-датасетное обобщение</h3>
+            <p>При обучении на FF++ и тестировании на DFDC точность гибрида составила <span class="highlight">88.4%</span>. Это на 5–8% выше, чем у однокомпонентных архитектур (Xception, чистый ViT), но подтверждает наличие датасет-специфичных смещений.</p>
+            
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Метрика</th><th>Xception</th><th>ViT-Base</th><th>Предложенная CNN-Transformer</th></tr></thead>
+                    <tbody>
+                        <tr><td>Accuracy (FF++)</td><td>92.6%</td><td>91.1%</td><td class="positive">95.8%</td></tr>
+                        <tr><td>AUC-ROC</td><td>0.942</td><td>0.935</td><td class="positive">0.981</td></tr>
+                        <tr><td>EER (Equal Error Rate)</td><td>6.8%</td><td>7.2%</td><td class="positive">4.1%</td></tr>
+                        <tr><td>Устойчивость к H.264</td><td>Низкая</td><td>Средняя</td><td class="positive">Высокая</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="concept-box">
+                <h4>🔍 Анализ ошибок</h4>
+                <p><strong>Ложноположительные:</strong> видео с сильным сжатием (<1 Мбит/с) и быстрым движением камеры (артефакты стабилизации имитируют генерацию).<br>
+                <strong>Ложноотрицательные:</strong> подделки на базе диффузионных моделей нового поколения (Stable Video Diffusion), минимизирующие частотные несоответствия.</p>
+            </div>
+        </section>
+
+        <section id="challenges">
+            <h2>⚠️ Ограничения и перспективы</h2>
+            <div class="cards-grid">
+                <div class="info-card warning">
+                    <h4>📉 Зависимость от разметки</h4>
+                    <p>Ошибки в датасетах приводят к переобучению на артефакты сжатия, а не на семантику генерации.</p>
+                </div>
+                <div class="info-card warning">
+                    <h4>💻 Вычислительная стоимость</h4>
+                    <p>Трансформерные блоки требуют ~4.2 ГБ VRAM. Развёртывание на edge-устройствах без акселерации затруднено.</p>
+                </div>
+                <div class="info-card warning">
+                    <h4>🎬 Адаптивные атаки</h4>
+                    <p>Новые генераторы специально оптимизируются под известные детекторы, создавая «гонку вооружений».</p>
+                </div>
+            </div>
+
+            <h3>🚀 Направления развития</h3>
+            <ul>
+                <li><strong>Continual Learning:</strong> обновление модели без полного переобучения при появлении новых генераторов (методы EWC, replay-буферы)</li>
+                <li><strong>Объяснимый ИИ (XAI):</strong> визуализация значимых областей через Grad-CAM для аудита решений</li>
+                <li><strong>Криптографическая верификация:</strong> интеграция с C2PA/Content Authenticity Initiative как первый эшелон защиты</li>
+                <li><strong>Оптимизация для периферии:</strong> pruning, дистилляция знаний, аппаратное ускорение (NPU)</li>
+            </ul>
+        </section>
+
+        <section id="qa">
+            <h2>❓ Вопросы для самопроверки и защиты</h2>
+            <p style="margin-bottom: 1.5rem; color: #64748b;">Нажмите на вопрос, чтобы увидеть развёрнутый ответ, основанный на тексте статьи.</p>
+
+            <div class="qa-item">
+                <div class="qa-question" onclick="toggleAnswer(this)">1. Почему чистые CNN неэффективны для детекции современных deepfakes?</div>
+                <div class="qa-answer">
+                    <p>CNN фокусируются на <strong>локальных текстурных паттернах</strong>. Современные генераторы (особенно диффузионные) минимизируют поверхностные артефакты. Кроме того, CNN быстро теряют точность при постобработке (сжатие, шум) и плохо обобщаются на новые датасеты, так как «запоминают» специфичные артефакты обучающей выборки, а не семантические признаки генерации.</p>
+                </div>
+            </div>
+
+            <div class="qa-item">
+                <div class="qa-question" onclick="toggleAnswer(this)">2. В чём заключается принцип работы гибридной архитектуры CNN-Transformer?</div>
+                <div class="qa-answer">
+                    <p>Архитектура использует конвейер: CNN извлекает локальные признаки (границы, микротекстуры, артефакты наложения), карты признаков передаются в трансформер в виде токенов. Механизм самовнимания вычисляет глобальные зависимости между удалёнными участками кадра. На этапе слияния применяется <strong>кросс-внимание</strong>, согласующее пространственные (RGB) и спектральные (DCT/Fourier) признаки, что повышает устойчивость к сжатию.</p>
+                </div>
+            </div>
+
+            <div class="qa-item">
+                <div class="qa-question" onclick="toggleAnswer(this)">3. Что такое кросс-датасетное обобщение и какие результаты показала модель?</div>
+                <div class="qa-answer">
+                    <p>Это тестирование модели на данных, которых не было в обучающей выборке (например, обучение на FaceForensics++, тест на DFDC). Модель показала точность <strong>88.4%</strong>, что ниже, чем на внутренних выборках, но на 5–8% превосходит однокомпонентные архитектуры. Это подтверждает частичную инвариантность к стилю синтеза, но указывает на проблему датасет-специфичных смещений.</p>
+                </div>
+            </div>
+
+            <div class="qa-item">
+                <div class="qa-question" onclick="toggleAnswer(this)">4. Как модель справляется с видео, сжатыми кодеком H.264?</div>
+                <div class="qa-answer">
+                    <p>Благодаря интеграции мультиспектрального модуля и кросс-вниманию. Частотный анализ выявляет артефакты, сохраняющиеся даже после компрессии (фазовые сдвиги, аномалии высокочастотных полос). В таблице результатов модель демонстрирует <strong>высокую устойчивость к H.264</strong> по сравнению с Xception (низкая) и ViT (средняя). Основные ложные срабатывания возникают только при битрейте <1 Мбит/с.</p>
+                </div>
+            </div>
+
+            <div class="qa-item">
+                <div class="qa-question" onclick="toggleAnswer(this)">5. Почему время инференса (18.3 мс) важно для практического применения?</div>
+                <div class="qa-answer">
+                    <p>18.3 мс на кадр означает возможность обработки <strong>~54 кадров в секунду</strong> на GPU NVIDIA RTX 4060, что позволяет анализировать видео в реальном времени (стандарт 24–30 fps). Применение квантования INT8 снижает задержку до 11.7 мс при потере точности <0.8%, открывая путь к развёртыванию на серверных линиях модерации контента и в мобильных приложениях.</p>
+                </div>
+            </div>
+
+            <div class="qa-item">
+                <div class="qa-question" onclick="toggleAnswer(this)">6. Какие методы предлагаются для решения проблемы «гонки вооружений» между генераторами и детекторами?</div>
+                <div class="qa-answer">
+                    <p>В статье предлагаются: <br>1. <strong>Адаптивное обучение (Continual Learning)</strong> с эластичной консолидацией весов (EWC) для сохранения знаний о старых типах манипуляций при интеграции новых.<br>2. <strong>Объяснимый ИИ (Grad-CAM)</strong> для аудита и быстрого выявления смещений.<br>3. <strong>Интеграция с криптографической верификацией (C2PA)</strong> как проактивный эшелон защиты, снижающий нагрузку на нейросетевой детектор.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="glossary">
+            <h2>📖 Глоссарий терминов</h2>
+            <dl>
+                <dt>Deepfake</dt>
+                <dd>Синтетический мультимедийный контент, созданный с помощью глубокого обучения, имитирующий реальных людей или события.</dd>
+                <dt>CNN (Convolutional Neural Network)</dt>
+                <dd>Архитектура нейросети, оптимизированная для обработки сеточных данных (изображений). Эффективна для извлечения локальных признаков.</dd>
+                <dt>Transformer / Self-Attention</dt>
+                <dd>Механизм, вычисляющий весовые связи между всеми элементами последовательности. Позволяет модели учитывать глобальный контекст.</dd>
+                <dt>Cross-Attention</dt>
+                <dd>Модифицированное внимание, согласующие признаки из двух разных представлений (например, RGB-пространство и частотная область).</dd>
+                <dt>AUC-ROC</dt>
+                <dd>Площадь под кривой «True Positive Rate vs False Positive Rate». Значение 0.981 означает отличное разделение классов.</dd>
+                <dt>EER (Equal Error Rate)</dt>
+                <td>Точка, где частота ложных срабатываний равна частоте пропусков. Чем ниже, тем лучше баланс детектора.</td>
+                <dt>Кросс-датасетное обобщение</dt>
+                <dd>Способность модели работать на данных, сгенерированных другими алгоритмами или из других источников, чем обучающая выборка.</dd>
+                <dt>C2PA (Coalition for Content Provenance and Authenticity)</dt>
+                <dd>Открытый стандарт криптографической привязки метаданных к контенту для верификации происхождения.</dd>
+            </dl>
+        </section>
+
+        <section id="references">
+            <h2>📚 Источники (оформлено по ГОСТ Р 7.0.5-2008)</h2>
+            <ol>
+                <li>Ли И., Сун Ц., Ван Х. и др. Deepfake detection: A comprehensive survey // IEEE Transactions on Multimedia. – 2023. – Vol. 25. – P. 412–430.</li>
+                <li>Россиньол А., Дюваль М. AI-generated media and information security: Threats and countermeasures // Computers & Security. – 2024. – Vol. 136. – Art. 103541.</li>
+                <li>Чжан Л., Чен Ю., Лю В. Limitations of CNN-based deepfake detectors under real-world compressions // Proc. CVPR Workshops. – 2023. – P. 112–120.</li>
+                <li>Коуш М., Савченко А.В. Частотные артефакты в синтезированных изображениях: анализ и методы детекции // Информатика и системы управления. – 2022. – № 4. – С. 45–58.</li>
+                <li>Франк Дж., Айхенхофер М., Шольц Т. Leveraging frequency analysis for deep fake image recognition // Proc. ICML. – 2020. – P. 324–334.</li>
+                <li>Досовицкий А., Бейер Л., Кожевников А. и др. An image is worth 16x16 words: Transformers for image recognition at scale // Proc. ICLR. – 2021. – P. 1–21.</li>
+                <li>Лю З., Линь И., Цао И. и др. Swin Transformer: Hierarchical vision transformer using shifted windows // Proc. ICCV. – 2021. – P. 10012–10022.</li>
+                <li>FaceForensics++: A large-scale dataset for facial manipulation detection [Электронный ресурс]. – URL: https://github.com/ondyari/FaceForensics (дата обращения: 15.05.2026).</li>
+                <li>Национальный центр кибербезопасности РФ. Рекомендации по противодействию распространению синтезированного медиаконтента. – М., 2025. – 48 с.</li>
+            </ol>
+        </section>
+
+        <div class="github-instructions">
+            <h2 style="color: #e2e8f0; border-bottom: 2px solid #475569;">📤 Как разместить сайт на GitHub Pages</h2>
+            <div class="step"><strong>Шаг 1.</strong> Создайте аккаунт на <a href="https://github.com" style="color: #60a5fa;">github.com</a> (если нет).</div>
+            <div class="step"><strong>Шаг 2.</strong> Нажмите <code>+</code> → <code>New repository</code>. В поле <strong>Repository name</strong> введите имя (например: <code>deepfake-detection-site</code>). Выберите <strong>Public</strong>. НЕ ставьте галочку "Initialize with README". Нажмите <code>Create repository</code>.</div>
+            <div class="step"><strong>Шаг 3.</strong> На странице репозитория нажмите <code>creating a new file</code>. В поле имени файла введите: <code>index.html</code>. Скопируйте ВЕСЬ код выше и вставьте в редактор. Внизу нажмите <code>Commit changes</code>.</div>
+            <div class="step"><strong>Шаг 4.</strong> Перейдите во вкладку <code>Settings</code> → в левом меню <code>Pages</code> → в разделе <strong>Build and deployment</strong> → <strong>Source</strong> выберите <code>Deploy from a branch</code> → <strong>Branch</strong> выберите <code>main</code> и папку <code>/(root)</code>. Нажмите <code>Save</code>.</div>
+            <div class="step"><strong>Шаг 5.</strong> Подождите 1-2 минуты. Ссылка на ваш сайт появится вверху страницы: <code>https://ваш-ник.github.io/deepfake-detection-site/</code>. Сайт доступен всем в интернете!</div>
+            <p style="margin-top: 1rem; color: #94a3b8;">💡 <em>Для обновления сайта просто отредактируйте <code>index.html</code> в репозитории и снова нажмите Commit. GitHub Pages обновит сайт автоматически.</em></p>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Горлов Денис Константинович | Тихоокеанский государственный университет</p>
+        <p>Научный руководитель: Порт М.С., к.т.н.</p>
+    </footer>
+
+    <script>
+        // Chart 1: Accuracy Comparison
+        const accuracyCtx = document.getElementById('accuracyChart').getContext('2d');
+        new Chart(accuracyCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Xception (CNN)', 'ViT-Base', 'Частотный + MLP', 'Гибридная CNN-Transformer'],
+                datasets: [{
+                    label: 'Accuracy на FaceForensics++, %',
+                    data: [92.6, 91.1, 89.3, 95.8],
+                    backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    title: { display: true, text: 'Сравнение точности методов детекции', font: { size: 16, weight: 'bold' } },
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: false, min: 85, max: 100, title: { display: true, text: 'Точность, %' } }
+                }
+            }
+        });
+
+        // Q&A Toggle
+        function toggleAnswer(element) {
+            const answer = element.nextElementSibling;
+            const isActive = answer.classList.contains('active');
+            document.querySelectorAll('.qa-answer').forEach(a => a.classList.remove('active'));
+            if (!isActive) answer.classList.add('active');
+        }
+
+        // Smooth Scroll & Animations
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('section').forEach(sec => {
+            sec.style.opacity = '0';
+            sec.style.transform = 'translateY(20px)';
+            sec.style.transition = 'all 0.6s ease-out';
+            observer.observe(sec);
+        });
+    </script>
+</body>
+</html>
