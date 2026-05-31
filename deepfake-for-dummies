@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepfakes: Как их обнаруживают?</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .hero-content h1 {
+            font-size: 3.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+            animation: fadeInDown 1s;
+        }
+
+        .hero-content .subtitle {
+            font-size: 1.5em;
+            color: #666;
+            margin-bottom: 40px;
+            animation: fadeInUp 1s;
+        }
+
+        .deepfake-demo {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 40px 0;
+            flex-wrap: wrap;
+        }
+
+        .demo-card {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-width: 300px;
+        }
+
+        .demo-card.real {
+            border: 4px solid #10b981;
+        }
+
+        .demo-card.fake {
+            border: 4px solid #ef4444;
+        }
+
+        .demo-icon {
+            font-size: 5em;
+            margin-bottom: 15px;
+        }
+
+        .demo-label {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .real .demo-label { color: #10b981; }
+        .fake .demo-label { color: #ef4444; }
+
+        /* Sections */
+        section {
+            background: white;
+            margin: 40px 0;
+            padding: 60px 40px;
+            border-radius: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            font-size: 2.5em;
+            color: #667eea;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h3 {
+            font-size: 1.8em;
+            color: #764ba2;
+            margin: 30px 0 15px;
+        }
+
+        /* Explanation Box */
+        .explanation-box {
+            background: #f8f9ff;
+            padding: 30px;
+            border-radius: 15px;
+            border-left: 5px solid #667eea;
+            margin: 20px 0;
+        }
+
+        .explanation-box h3 {
+            margin-top: 0;
+        }
+
+        /* How it Works */
+        .process-flow {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 40px 0;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .process-step {
+            flex: 1;
+            min-width: 200px;
+            text-align: center;
+            padding: 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            position: relative;
+        }
+
+        .process-step .step-number {
+            font-size: 3em;
+            font-weight: bold;
+            opacity: 0.3;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+        }
+
+        .process-step h4 {
+            font-size: 1.3em;
+            margin: 10px 0;
+        }
+
+        .arrow {
+            font-size: 2.5em;
+            color: #667eea;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: translateX(0); }
+            50% { opacity: 0.5; transform: translateX(10px); }
+        }
+
+        /* Architecture */
+        .architecture-diagram {
+            background: #f8f9ff;
+            padding: 40px;
+            border-radius: 20px;
+            margin: 30px 0;
+        }
+
+        .layer {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .layer h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+
+        .layer-icon {
+            font-size: 2em;
+            margin-right: 10px;
+        }
+
+        /* Comparison Cards */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .compare-card {
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .compare-card.old {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+        }
+
+        .compare-card.new {
+            background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+            color: white;
+        }
+
+        .compare-card h3 {
+            color: white;
+            margin-top: 0;
+        }
+
+        .compare-card ul {
+            list-style: none;
+            margin-top: 20px;
+        }
+
+        .compare-card li {
+            padding: 8px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .compare-card li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+
+        /* Results */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .result-number {
+            font-size: 3.5em;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .result-label {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 40px 0;
+        }
+
+        /* Problem Cards */
+        .problem-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .problem-card {
+            background: white;
+            border: 3px solid #ef4444;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .problem-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .problem-card h3 {
+            color: #ef4444;
+            margin: 10px 0;
+        }
+
+        /* Conclusion */
+        .conclusion-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            margin-top: 30px;
+        }
+
+        .conclusion-box h3 {
+            color: white;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        .conclusion-list {
+            list-style: none;
+            margin-top: 25px;
+        }
+
+        .conclusion-list li {
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            margin: 10px 0;
+            border-radius: 10px;
+            padding-left: 50px;
+            position: relative;
+        }
+
+        .conclusion-list li:before {
+            content: "🎯";
+            position: absolute;
+            left: 20px;
+            font-size: 1.3em;
+        }
+
+        /* Animations */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero-content h1 { font-size: 2em; }
+            .process-flow { flex-direction: column; }
+            .arrow { transform: rotate(90deg); }
+            section { padding: 40px 20px; }
+        }
+
+        /* Visual Metaphor */
+        .detection-metaphor {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            margin: 40px 0;
+            flex-wrap: wrap;
+        }
+
+        .metaphor-item {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .metaphor-icon {
+            font-size: 4em;
+            margin-bottom: 10px;
+        }
+
+        .vs {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hero Section -->
+    <div class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>🎭 Deepfakes: Как их распознать?</h1>
+                <p class="subtitle">Гибридные нейросети против поддельных видео</p>
+                
+                <div class="deepfake-demo">
+                    <div class="demo-card real">
+                        <div class="demo-icon">😊</div>
+                        <div class="demo-label">Настоящее видео</div>
+                        <p>Реальный человек, естественные движения</p>
+                    </div>
+                    <div class="demo-card fake">
+                        <div class="demo-icon">🤖</div>
+                        <div class="demo-label">Deepfake</div>
+                        <p>ИИ создал подделку, которую сложно отличить</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- What are Deepfakes -->
+        <section>
+            <h2> Что такое Deepfakes?</h2>
+            <div class="explanation-box">
+                <h3>Представьте, что ИИ может заменить лицо любого человека в видео...</h3>
+                <p><strong>Deepfake</strong> (дипфейк) — это поддельное видео или аудио, созданное искусственным интеллектом. Технология может заставить любого человека говорить то, чего он никогда не говорил, или делать то, чего никогда не делал.</p>
+            </div>
+
+            <div class="detection-metaphor">
+                <div class="metaphor-item">
+                    <div class="metaphor-icon">🎥</div>
+                    <p>Видео с лицом</p>
+                </div>
+                <div class="vs">+</div>
+                <div class="metaphor-item">
+                    <div class="metaphor-icon">🧠</div>
+                    <p>Нейросеть</p>
+                </div>
+                <div class="vs">=</div>
+                <div class="metaphor-item">
+                    <div class="metaphor-icon">🎭</div>
+                    <p>Deepfake</p>
+                </div>
+            </div>
+
+            <div class="explanation-box" style="background: #fef2f2; border-left-color: #ef4444;">
+                <h3>⚠️ Почему это опасно?</h3>
+                <ul style="margin-left: 20px;">
+                    <li>📰 <strong>Фейковые новости</strong> — политики «говорят» то, чего не говорили</li>
+                    <li>💰 <strong>Мошенничество</strong> — голос руководителя для перевода денег</li>
+                    <li>🔐 <strong>Кража личности</strong> — поддельные видео для шантажа</li>
+                    <li>⚖️ <strong>Фальшивые доказательства</strong> в суде</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- How Detection Works -->
+        <section>
+            <h2>🔍 Как обнаруживают deepfakes?</h2>
+            
+            <div class="process-flow">
+                <div class="process-step">
+                    <div class="step-number">1</div>
+                    <h4>📥 Входное видео</h4>
+                    <p>Загружаем подозрительное видео</p>
+                </div>
+                <div class="arrow">→</div>
+                <div class="process-step">
+                    <div class="step-number">2</div>
+                    <h4>👤 Детекция лица</h4>
+                    <p>Находим все лица в кадре</p>
+                </div>
+                <div class="arrow">→</div>
+                <div class="process-step">
+                    <div class="step-number">3</div>
+                    <h4>🔬 Анализ</h4>
+                    <p>Ищем артефакты генерации</p>
+                </div>
+                <div class="arrow">→</div>
+                <div class="process-step">
+                    <div class="step-number">4</div>
+                    <h4>✅ Вердикт</h4>
+                    <p>Real или Fake?</p>
+                </div>
+            </div>
+
+            <h3>Что ищет нейросеть?</h3>
+            <div class="comparison-grid">
+                <div class="compare-card old">
+                    <h3> Старые методы (только CNN)</h3>
+                    <ul>
+                        <li>Смотрят только на текстуры кожи</li>
+                        <li>Анализируют отдельные кадры</li>
+                        <li>Пропускают сложные подделки</li>
+                        <li>Точность: 85-90%</li>
+                    </ul>
+                </div>
+                <div class="compare-card new">
+                    <h3>🚀 Гибридные нейросети</h3>
+                    <ul>
+                        <li>Анализируют всё видео целиком</li>
+                        <li>Ищут несоответствия в освещении</li>
+                        <li>Проверяют частотные артефакты</li>
+                        <li>Точность: 95-98%</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Architecture -->
+        <section>
+            <h2>🏗️ Как работает гибридная нейросеть?</h2>
+            
+            <div class="architecture-diagram">
+                <div class="layer">
+                    <h4><span class="layer-icon">🎯</span>1. Предобработка</h4>
+                    <p>Выравниваем лицо по ключевым точкам (глаза, нос, рот), нормализуем изображение, выделяем частотные компоненты</p>
+                </div>
+
+                <div class="layer">
+                    <h4><span class="layer-icon">🔍</span>2. CNN-экстрактор (локальный анализ)</h4>
+                    <p>Свёрточная нейросеть ищет мелкие артефакты: неровности кожи, границы наложения, несоответствия в области глаз и рта</p>
+                </div>
+
+                <div class="layer">
+                    <h4><span class="layer-icon">🌐</span>3. Трансформер (глобальный контекст)</h4>
+                    <p>Механизм внимания анализирует связи между разными частями лица: соответствует ли освещение лица фону, синхронизированы ли движения губ со звуком</p>
+                </div>
+
+                <div class="layer">
+                    <h4><span class="layer-icon">📊</span>4. Частотный анализ</h4>
+                    <p>Преобразование Фурье выявляет невидимые глазу артефакты в высокочастотной области — «отпечатки» генерации ИИ</p>
+                </div>
+
+                <div class="layer">
+                    <h4><span class="layer-icon">✅</span>5. Классификатор</h4>
+                    <p>Объединяет все признаки и выдаёт вероятность: «Это deepfake с вероятностью 97.3%»</p>
+                </div>
+            </div>
+
+            <div class="explanation-box">
+                <h3>🎯 Простая аналогия</h3>
+                <p><strong>CNN</strong> — это как лупа: рассматривает мелкие детали (поры кожи, границы).</p>
+                <p><strong>Трансформер</strong> — это как отойти назад и посмотреть на картину целиком: видит несоответствия в освещении, перспективе.</p>
+                <p><strong>Вместе</strong> они работают как детектив: один изучает улики под микроскопом, другой видит общую картину преступления.</p>
+            </div>
+        </section>
+
+        <!-- Results -->
+        <section>
+            <h2>📊 Результаты экспериментов</h2>
+            
+            <div class="results-grid">
+                <div class="result-card">
+                    <span class="result-number">95.8%</span>
+                    <span class="result-label">Точность на FaceForensics++</span>
+                </div>
+                <div class="result-card">
+                    <span class="result-number">93.1%</span>
+                    <span class="result-label">Точность на Celeb-DF</span>
+                </div>
+                <div class="result-card">
+                    <span class="result-number">0.981</span>
+                    <span class="result-label">AUC-ROC (качество модели)</span>
+                </div>
+                <div class="result-card">
+                    <span class="result-number">18.3 мс</span>
+                    <span class="result-label">Обработка одного кадра</span>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="accuracyChart"></canvas>
+            </div>
+
+            <h3>Сравнение с другими методами</h3>
+            <div class="chart-container">
+                <canvas id="comparisonChart"></canvas>
+            </div>
+        </section>
+
+        <!-- Datasets -->
+        <section>
+            <h2>📚 На каких данных обучали?</h2>
+            <div class="comparison-grid">
+                <div class="compare-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h3>FaceForensics++</h3>
+                    <p><strong>10,000+</strong> видео</p>
+                    <p>4 типа манипуляций: Deepfakes, FaceSwap, Face2Face, NeuralTextures</p>
+                </div>
+                <div class="compare-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                    <h3>Celeb-DF</h3>
+                    <p><strong>5,639</strong> видео</p>
+                    <p>Более качественные deepfakes, сложнее обнаружить</p>
+                </div>
+                <div class="compare-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+                    <h3>DFDC</h3>
+                    <p><strong>100,000+</strong> видео</p>
+                    <p>От Facebook, разнообразные условия съёмки</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Problems -->
+        <section>
+            <h2>⚠️ Какие проблемы остались?</h2>
+            
+            <div class="problem-cards">
+                <div class="problem-card">
+                    <div class="problem-icon">📉</div>
+                    <h3>Падение точности на новых данных</h3>
+                    <p>При тестировании на неизвестных генераторах точность падает на 5-8%</p>
+                </div>
+
+                <div class="problem-card">
+                    <div class="problem-icon">💻</div>
+                    <h3>Высокие требования к железу</h3>
+                    <p>Трансформеры требуют мощных GPU, сложно запустить на телефоне</p>
+                </div>
+
+                <div class="problem-card">
+                    <div class="problem-icon">🎬</div>
+                    <h3>Новые генеративные модели</h3>
+                    <p>Sora, Stable Video Diffusion создают ещё более качественные подделки</p>
+                </div>
+
+                <div class="problem-card">
+                    <div class="problem-icon"></div>
+                    <h3>Сжатие видео</h3>
+                    <p>При сильном сжатии (YouTube, мессенджеры) артефакты исчезают</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Future -->
+        <section>
+            <h2>🚀 Что дальше?</h2>
+            <div class="explanation-box">
+                <h3>Перспективные направления:</h3>
+                <ul style="margin-left: 20px; font-size: 1.1em;">
+                    <li>🔄 <strong>Адаптивное обучение</strong> — модель учится на новых типах deepfakes без полного переобучения</li>
+                    <li>🔐 <strong>Цифровые водяные знаки</strong> + нейросети = двойная защита</li>
+                    <li>📱 <strong>Оптимизация для мобильных</strong> — запуск на смартфонах в реальном времени</li>
+                    <li>🔍 <strong>Объяснимый ИИ</strong> — модель показывает, ПОЧЕМУ она решила что это fake</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Conclusion -->
+        <section>
+            <div class="conclusion-box">
+                <h3>🎯 Главное за 1 минуту</h3>
+                <ul class="conclusion-list">
+                    <li>Deepfakes — это поддельные видео, созданные ИИ, которые сложно отличить от настоящих</li>
+                    <li>Гибридные нейросети (CNN + Трансформер + частотный анализ) обнаруживают их с точностью до 95.8%</li>
+                    <li>CNN ищет мелкие артефакты, трансформер анализирует глобальные несоответствия</li>
+                    <li>Модель работает в реальном времени: 18.3 мс на кадр (24 кадра/сек)</li>
+                    <li>Основные проблемы: падение точности на новых данных, высокие требования к GPU</li>
+                    <li>Будущее — в адаптивном обучении и комбинации с криптографической верификацией</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <section style="text-align: center; background: #f8f9ff;">
+            <h3>📊 Научная статья</h3>
+            <p style="font-size: 1.2em; margin: 20px 0;">
+                <strong>Обнаружение глубоких подделок (deepfakes) с помощью гибридных нейросетей</strong>
+            </p>
+            <p style="margin: 20px 0;">
+                Автор: <strong>Горлов Денис Константинович</strong><br>
+                Научный руководитель: <strong>Порт М.С.</strong><br>
+                ФГБОУ ВО «Тихоокеанский государственный университет», Хабаровск
+            </p>
+            <p style="margin-top: 30px; color: #666; font-size: 0.9em;">
+                Источники данных: FaceForensics++, Celeb-DF, DFDC<br>
+                Методы: CNN, Vision Transformer, частотный анализ, кросс-валидация
+            </p>
+        </section>
+    </div>
+
+    <script>
+        // Accuracy Chart
+        const accuracyCtx = document.getElementById('accuracyChart').getContext('2d');
+        new Chart(accuracyCtx, {
+            type: 'line',
+            data: {
+                labels: ['2022', '2023', '2024', '2025', '2026'],
+                datasets: [{
+                    label: 'Точность обнаружения, %',
+                    data: [85, 88, 91, 94, 95.8],
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 4,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Эволюция точности детекции deepfakes',
+                        font: { size: 18 }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: 80,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Точность, %'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Comparison Chart
+        const comparisonCtx = document.getElementById('comparisonChart').getContext('2d');
+        new Chart(comparisonCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Xception (CNN)', 'ViT (Трансформер)', 'Частотный анализ', 'Гибридная модель'],
+                datasets: [{
+                    label: 'Точность на FF++, %',
+                    data: [92.6, 91.1, 89.3, 95.8],
+                    backgroundColor: [
+                        '#fa709a',
+                        '#30cfd0',
+                        '#fee140',
+                        '#667eea'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Сравнение методов обнаружения deepfakes',
+                        font: { size: 18 }
+                    },
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: 85,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Точность, %'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Scroll animations
+        const observerOptions = {
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('section').forEach(section => {
+            section.style.opacity = '0';
+            section.style.transform = 'translateY(20px)';
+            section.style.transition = 'all 0.6s ease-out';
+            observer.observe(section);
+        });
+    </script>
+</body>
+</html>
